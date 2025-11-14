@@ -1,75 +1,82 @@
 <script setup>
 import { ref } from 'vue';
+// Importamos nuestro GameEngine
 import GameEngine from './components/GameEngine.vue';
 
-// Importem el gestor i la llista reactiva
-import communicationManager, { jugadorsConnectats } from './services/communicationManager.js';
+// Importamos el gestor de conexión y la lista de jugadores que creamos
+import gestorConexion, { jugadoresEnLobby } from './services/communicationManager.js';
 
-// Estat per controlar la vista
-const vistaActual = ref('salaEspera'); // 'salaEspera', 'lobby', 'joc'
-const nomJugador = ref('');
+// ---- Estado de la App ----
 
-// Funció per connectar-se
-function connectarAlServidor() {
-  if (nomJugador.value.trim()) {
-    communicationManager.connect(nomJugador.value);
-    vistaActual.value = 'lobby';
+// 'pantallaActual' controla qué vista mostramos
+const pantallaActual = ref('espera'); // Vistas: 'espera', 'lobby', 'partida'
+const nombreUsuario = ref('');
+
+// ---- Funciones ----
+
+// Se llama al pulsar el botón de entrar
+function entrarAlLobby() {
+  const nombre = nombreUsuario.value.trim();
+  
+  if (nombre) {
+    gestorConexion.conectar(nombre); // Le pasamos el nombre al gestor
+    pantallaActual.value = 'lobby'; // Cambiamos de pantalla
   } else {
-    alert('Introdueix un nom');
+    alert('¡Escribe un nombre!');
   }
 }
 
-// Funcions per canviar de vista
-function comencarJoc() {
-  vistaActual.value = 'joc';
-  // En un futur, aquí avisaríem al servidor
+// Se llama desde el lobby para empezar
+function iniciarPartida() {
+  pantallaActual.value = 'partida';
+  // TODO: Avisar al servidor que este jugador ha empezado
 }
 
-function tornarAlLobby() {
-  vistaActual.value = 'lobby';
+// Se llama desde el juego para volver
+function volverAlLobby() {
+  pantallaActual.value = 'lobby';
 }
 </script>
 
 <template>
   <main>
-    <div v-if="vistaActual === 'salaEspera'" class="vista-container">
+    <div v-if="pantallaActual === 'espera'" class="vista-container">
       <h1>Type Racer Royale</h1>
       <input 
         type="text" 
-        v-model="nomJugador" 
-        placeholder="Introdueix el teu nom"
-        @keyup.enter="connectarAlServidor" 
+        v-model="nombreUsuario" 
+        placeholder="Escribe tu nombre..."
+        @keyup.enter="entrarAlLobby" 
       />
-      <button @click="connectarAlServidor">Entra al Lobby</button>
+      <button @click="entrarAlLobby">Entrar al Lobby</button>
     </div>
 
-    <div v-else-if="vistaActual === 'lobby'" class="vista-container">
-      <h2>Jugadors Connectats ({{ jugadorsConnectats.length }})</h2>
+    <div v-else-if="pantallaActual === 'lobby'" class="vista-container">
+      <h2>Jugadores Conectados ({{ jugadoresEnLobby.length }})</h2>
       <ul>
-        <li v-for="jugador in jugadorsConnectats" :key="jugador.id">
+        <li v-for="jugador in jugadoresEnLobby" :key="jugador.id">
           {{ jugador.name }}
         </li>
       </ul>
-      <button @click="comencarJoc">Comença a Jugar!</button>
+      <button @click="iniciarPartida">¡Empezar a Jugar!</button>
     </div>
 
-    <div v-else-if="vistaActual === 'joc'" class="vista-container">
+    <div v-else-if="pantallaActual === 'partida'" class="vista-container">
       <GameEngine />
-      <button @click="tornarAlLobby">Torna al Lobby</button>
+      <button @click="volverAlLobby">Volver al Lobby</button>
     </div>
   </main>
 </template>
 
 <style>
-/* Estils globals per a l'aplicació */
+/* Estilo "humanizado" - Menos moderno, más funcional */
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: Verdana, sans-serif; /* Fuente diferente */
   margin: 0;
-  background-color: #f0f2f5; /* Un fons gris molt suau */
-  color: #333;
+  background-color: #fafafa; /* Fondo casi blanco */
+  color: #222;
 }
 
-/* Contenidor principal que centra la nostra app */
 main {
   display: grid;
   place-items: center;
@@ -78,73 +85,68 @@ main {
   box-sizing: border-box;
 }
 
-/* El contenidor de cada vista */
+/* Contenedor principal con bordes duros */
 .vista-container {
   width: 100%;
-  max-width: 600px; /* Augmentat per al joc */
-  padding: 2.5rem 2rem; /* Més espai intern */
-  border-radius: 12px; /* Cantonades més arrodonides */
+  max-width: 550px; /* Un poco más estrecho */
+  padding: 2rem;
+  border-radius: 4px; /* Esquinas más cuadradas */
   background: #ffffff;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05); /* Ombra suau */
+  border: 1px solid #ccc; /* Sin sombras, con borde */
   text-align: center;
-  box-sizing: border-box; /* Important per al padding */
+  box-sizing: border-box;
 }
 
 h1 {
-  font-size: 2.5rem;
-  color: #2c3e50;
+  font-size: 2.2rem;
+  color: #333;
   margin-top: 0;
 }
 
 h2 {
-  font-size: 1.8rem;
-  color: #34495e;
-  border-bottom: 2px solid #f0f2f5;
+  font-size: 1.5rem;
+  color: #444;
+  border-bottom: 1px dashed #ddd; /* Borde discontinuo */
   padding-bottom: 10px;
 }
 
-/* Inputs de text més moderns */
+/* Inputs */
 input[type="text"] {
   display: block;
   width: 90%;
   margin: 25px auto;
-  padding: 14px;
+  padding: 12px;
   font-size: 1rem;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  border: 1px solid #ccc;
+  border-radius: 4px;
   box-sizing: border-box;
+  transition: border-color 0.2s;
 }
 
 input[type="text"]:focus {
   outline: none;
-  border-color: #007aff; /* Color d'accent (blau) */
-  box-shadow: 0 0 0 3px rgba(0,122,255,0.1);
+  border-color: #337ab7; /* Azul "clásico" */
 }
 
-/* Botons principals */
+/* Botones */
 button {
-  padding: 12px 25px;
+  padding: 10px 20px;
   font-size: 1rem;
-  font-weight: 600;
+  font-weight: bold;
   color: #fff;
-  background-color: #007aff; /* Blau principal */
+  background-color: #337ab7; /* Azul "clásico" */
   border: none;
-  border-radius: 8px;
+  border-radius: 4px;
   cursor: pointer;
-  transition: background-color 0.2s, transform 0.1s;
+  transition: background-color 0.2s;
   margin-top: 10px;
 }
 
 button:hover {
-  background-color: #0056b3; /* Un blau una mica més fosc */
+  background-color: #286090; /* Azul más oscuro */
 }
 
-button:active {
-  transform: scale(0.98); /* Efecte de pulsació */
-}
-
-/* Llista de jugadors */
+/* Lista de jugadores */
 ul {
   list-style: none;
   padding: 0;
@@ -154,16 +156,16 @@ ul {
 
 li {
   font-size: 1.1rem;
-  padding: 12px 15px;
-  border-bottom: 1px solid #f0f2f5;
+  padding: 10px;
+  border-bottom: 1px solid #eee;
   display: flex;
   align-items: center;
 }
 
-/* Afegeix un punt verd per a cada jugador (detall) */
+/* Punto de "online" del color de los botones */
 li::before {
   content: '●';
-  color: #28a745; /* Verd "online" */
+  color: #337ab7; /* Azul "clásico" */
   font-size: 0.8rem;
   margin-right: 10px;
 }

@@ -1,123 +1,128 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 
-// --- ESTAT DEL JOC (Amb errors: 0) ---
-const estatDelJoc = ref({
-  paraules: [
-    { id: 1, text: 'component', estat: 'pendent', errors: 0 },
-    { id: 2, text: 'reactivitat', estat: 'pendent', errors: 0 },
-    { id: 3, text: 'javascript', estat: 'pendent', errors: 0 },
-    { id: 4, text: 'framework', estat: 'pendent', errors: 0 },
-    { id: 5, text: 'template', estat: 'pendent', errors: 0 }
+// ---- Estado del Juego ----
+const partida = ref({
+  palabras: [
+    { id: 1, text: 'componente', estado: 'pendiente', errors: 0 },
+    { id: 2, text: 'reactividad', estado: 'pendiente', errors: 0 },
+    { id: 3, text: 'javascript', estado: 'pendiente', errors: 0 },
+    { id: 4, text: 'framework', estado: 'pendiente', errors: 0 },
+    { id: 5, text: 'plantilla', estado: 'pendiente', errors: 0 }
   ],
-  indexParaulaActiva: 0,
-  textEntrat: '',
-  estadistiques: [],
+  palabraActualIdx: 0, // El índice de la palabra actual
+  inputUsuario: '',  // Lo que el usuario está escribiendo
+  estadisticas: [],  // Guardamos los resultados
 });
 
-const paraulaActiva = computed(() => {
-  if (estatDelJoc.value.indexParaulaActiva >= estatDelJoc.value.paraules.length) {
-    return null;
+// Una 'computed' para acceder fácil a la palabra en la que estamos
+const palabraActual = computed(() => {
+  const idx = partida.value.palabraActualIdx;
+  if (idx >= partida.value.palabras.length) {
+    return null; // El juego ha terminado
   }
-  return estatDelJoc.value.paraules[estatDelJoc.value.indexParaulaActiva];
+  return partida.value.palabras[idx];
 });
 
-let tempsIniciParaula = 0;
+let tiempoInicio = 0; // Para el cronómetro
 
-function iniciarCronometreParaula() {
-  tempsIniciParaula = Date.now();
+function iniciarCronometro() {
+  tiempoInicio = Date.now();
 }
 
-// --- LÒGICA DE VALIDACIÓ (CORREGIDA PER MOSTRAR ERRORS) ---
-function validarProgres() {
-  if (!paraulaActiva.value) return;
+// ---- Lógica Principal ----
+// Se ejecuta CADA VEZ que el usuario teclea algo
+function revisarInput() {
+  if (!palabraActual.value) return; // No hacer nada si se acabó el juego
 
-  const textCorrecte = paraulaActiva.value.text;
-  const textEntrat = estatDelJoc.value.textEntrat;
+  const palabraCorrecta = palabraActual.value.text;
+  const inputActual = partida.value.inputUsuario;
 
-  // Iniciem cronòmetre
-  if (textEntrat.length === 1 && tempsIniciParaula === 0) {
-    iniciarCronometreParaula();
+  // Empezar el crono al teclear la primera letra
+  if (inputActual.length === 1 && tiempoInicio === 0) {
+    iniciarCronometro();
   }
 
-  // --- REPTE 5 (Versió Millorada per mostrar error en vermell) ---
-  if (textEntrat.length > 0 && !textCorrecte.startsWith(textEntrat)) {
-    // Comprovem si l'error s'acaba de produir
-    const textAnterior = textEntrat.substring(0, textEntrat.length - 1);
-    if (textCorrecte.startsWith(textAnterior)) {
-      paraulaActiva.value.errors++; // Comptem l'error
+  // --- Lógica de Errores ---
+  // Si el texto NO empieza con lo que el usuario ha escrito...
+  if (inputActual.length > 0 && !palabraCorrecta.startsWith(inputActual)) {
+    // Para contar el error UNA SOLA VEZ, comprobamos si
+    // el texto *anterior* sí era correcto.
+    const inputAnterior = inputActual.substring(0, inputActual.length - 1);
+    if (palabraCorrecta.startsWith(inputAnterior)) {
+      palabraActual.value.errors++; // Sumamos un error
     }
-    // NO esborrem la lletra, per permetre que es vegi en vermell.
-    // L'usuari haurà d'esborrar-la manualment.
+    // No borramos la letra, dejamos que el CSS la pinte de rojo
+    // El usuario tendrá que usar 'Backspace'
   }
-  // --- FI REPTE 5 ---
 
-  // Comprovem si la paraula està completada
-  if (textEntrat === textCorrecte) {
-    const tempsTrigat = Date.now() - tempsIniciParaula;
+  // --- Lógica de Palabra Completada ---
+  if (inputActual === palabraCorrecta) {
+    const tiempoTardado = Date.now() - tiempoInicio;
     
-    estatDelJoc.value.estadistiques.push({
-      paraula: paraulaActiva.value.text,
-      temps: tempsTrigat,
-      errors: paraulaActiva.value.errors,
+    // Guardar estadísticas
+    partida.value.estadisticas.push({
+      palabra: palabraActual.value.text,
+      tiempo: tiempoTardado,
+      errors: palabraActual.value.errors,
     });
 
-    // Actualitzem estat
-    paraulaActiva.value.estat = 'completada';
-    estatDelJoc.value.indexParaulaActiva++;
-    estatDelJoc.value.textEntrat = '';
-    tempsIniciParaula = 0;
+    // Resetear para la siguiente palabra
+    palabraActual.value.estado = 'completada';
+    partida.value.palabraActualIdx++;
+    partida.value.inputUsuario = '';
+    tiempoInicio = 0;
 
-    if (estatDelJoc.value.indexParaulaActiva >= estatDelJoc.value.paraules.length) {
-      console.log('Joc acabat!', estatDelJoc.value.estadistiques);
+    // Comprobar si se acabó el juego
+    if (partida.value.palabraActualIdx >= partida.value.palabras.length) {
+      console.log('¡Juego terminado!', partida.value.estadisticas);
+      // Aquí se podría mostrar un resumen
     }
   }
 }
 
-// --- REPTE 4: Funció Ajudant ---
-function getClasseLletra(indexLletra) {
-  const textEntrat = estatDelJoc.value.textEntrat;
+// --- Función de Estilo (CSS) ---
+// Decide qué clase (color) debe tener cada letra
+function obtenerClaseLetra(idxLetra) {
+  const input = partida.value.inputUsuario;
   
-  // Aquest 'if' és crucial. Si textEntrat és més llarg
-  // que la paraula (impossible) o la lletra és incorrecta
-  if (indexLletra >= textEntrat.length) {
-    return 'lletra-pendent';
+  // Si aún no hemos llegado a esta letra
+  if (idxLetra >= input.length) {
+    return 'letra-pendiente';
   }
-
-  // Si la lletra de la paraula correcta NO coincideix
-  if (paraulaActiva.value.text[indexLletra] !== textEntrat[indexLletra]) {
-    return 'lletra-incorrecta';
+  // Si la letra tecleada NO coincide con la letra correcta
+  if (palabraActual.value.text[idxLetra] !== input[idxLetra]) {
+    return 'letra-incorrecta';
   }
-  
-  // Si la lletra és correcta
-  if (textEntrat[indexLletra] === paraulaActiva.value.text[indexLletra]) {
-    return 'lletra-correcta';
-  }
+  // Si coincide
+  return 'letra-correcta';
 }
 
-// --- REPTE 6: Teclat Visual ---
-const filesDelTeclat = ref([
+// ---- Teclado Visual ----
+const filasTeclado = ref([
   ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
   ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L'],
   ['Z', 'X', 'C', 'V', 'B', 'N', 'M']
 ]);
-const teclaPremuda = ref('');
+const teclaPulsada = ref(''); // Para el "flash" de la tecla
 
 function handleKeyDown(event) {
-  if (event.key.length > 1) return; // Ignorem Shift, Ctrl, etc.
-  const tecla = event.key.toUpperCase();
-  if (filesDelTeclat.value.flat().includes(tecla)) {
-    teclaPremuda.value = tecla;
+  if (event.key.length > 1) return; // Ignorar 'Shift', 'Ctrl', 'Backspace'
+
+  const teclaMayus = event.key.toUpperCase();
+  if (filasTeclado.value.flat().includes(teclaMayus)) {
+    teclaPulsada.value = teclaMayus;
+    // Quitar el "flash" después de 150ms
     setTimeout(() => {
-      teclaPremuda.value = '';
+      teclaPulsada.value = '';
     }, 150);
   }
 }
 
+// Escuchar las teclas en toda la ventana
 onMounted(() => {
   window.addEventListener('keydown', handleKeyDown);
 });
-
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeyDown);
 });
@@ -128,21 +133,21 @@ onUnmounted(() => {
   <div class="game-engine">
     <div class="paraules-container">
       <div 
-        v-for="(paraula, index) in estatDelJoc.paraules" 
-        :key="paraula.id"
+        v-for="(palabra, index) in partida.palabras" 
+        :key="palabra.id"
         class="paraula"
         :class="{ 
-          'paraula-activa': index === estatDelJoc.indexParaulaActiva,
-          'paraula-completada': paraula.estat === 'completada'
+          'paraula-activa': index === partida.palabraActualIdx,
+          'paraula-completada': palabra.estado === 'completada'
         }"
       >
         <span 
-          v-for="(lletra, i) in paraula.text.split('')" 
+          v-for="(letra, i) in palabra.text.split('')" 
           :key="i"
           class="lletra"
-          :class="index === estatDelJoc.indexParaulaActiva ? getClasseLletra(i) : ''"
+          :class="index === partida.palabraActualIdx ? obtenerClaseLetra(i) : ''"
         >
-          {{ lletra }}
+          {{ letra }}
         </span>
       </div>
     </div>
@@ -150,10 +155,10 @@ onUnmounted(() => {
     <input 
       type="text" 
       class="text-input"
-      v-model="estatDelJoc.textEntrat"
-      @input="validarProgres"
-      placeholder="Comença a escriure..."
-      :disabled="!paraulaActiva"
+      v-model="partida.inputUsuario"
+      @input="revisarInput"
+      placeholder="Empieza a escribir..."
+      :disabled="!palabraActual"
       autocomplete="off"
       autocorrect="off"
       autocapitalize="none"
@@ -162,7 +167,7 @@ onUnmounted(() => {
 
     <div class="teclat-container">
       <div 
-        v-for="(fila, i) in filesDelTeclat" 
+        v-for="(fila, i) in filasTeclado" 
         :key="i" 
         class="fila-teclat"
       >
@@ -170,7 +175,7 @@ onUnmounted(() => {
           v-for="tecla in fila" 
           :key="tecla" 
           class="tecla"
-          :class="{ 'tecla-premuda': tecla === teclaPremuda }"
+          :class="{ 'tecla-premuda': tecla === teclaPulsada }"
         >
           {{ tecla }}
         </div>
@@ -180,66 +185,82 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-/* Estils específics del GameEngine */
+/* Estilo "humanizado" - Modo oscuro / Terminal */
 .game-engine {
-  font-family: Arial, sans-serif;
   width: 100%;
+  background: #282c34; /* Fondo oscuro */
+  color: #abb2bf; /* Texto gris claro */
+  padding: 20px;
+  border-radius: 8px;
+  box-sizing: border-box;
 }
 
 .paraules-container {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 10px;
   margin-bottom: 20px;
-  font-size: 1.5rem;
-  line-height: 2rem;
-  padding: 10px;
-  background: #f9f9f9;
-  border-radius: 8px;
+  font-family: 'Courier New', Courier, monospace; /* Fuente de programador */
+  font-size: 1.6rem;
+  line-height: 2.2rem;
+  padding: 15px;
+  background: #21252b; /* Fondo un poco más oscuro */
+  border-radius: 4px;
 }
 
 .paraula {
-  color: #aaa;
+  color: #5c6370; /* Palabras grises (aún no escritas) */
 }
 
 .paraula-completada {
-  color: #d0d0d0;
+  color: #444; /* Aún más oscuras */
 }
 
 .paraula-activa {
-  color: #333; /* Color per defecte de la paraula activa */
+  color: #abb2bf; /* Palabra activa en gris claro */
 }
 
-/* --- Estils REPTE 4 --- */
+/* --- Colores de las letras --- */
 .lletra {
   transition: all 0.1s;
 }
 
 .lletra-correcta {
-  color: #4caf50; /* Verd */
+  color: #98c379; /* Verde (como en el código) */
+  font-weight: bold;
 }
 
-/* Aquesta és la classe que faltava! */
 .lletra-incorrecta {
-  color: #fff;
-  background-color: #f44336; /* Fons vermell */
-  text-decoration: underline;
+  color: #21252b; /* Texto oscuro */
+  background-color: #e06c75; /* Rojo (como en el código) */
   border-radius: 2px;
   padding: 0 1px;
 }
 
+/* Input de texto */
 .text-input {
-  width: 100%; /* El padding ja el gestiona el pare (.vista-container) */
+  width: 100%;
+  padding: 10px;
+  font-size: 1.2rem;
+  background: #21252b;
+  color: #abb2bf;
+  border: 1px solid #5c6370;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+.text-input:focus {
+  outline: none;
+  border-color: #61afef; /* Azul al hacer foco */
 }
 
-/* --- Estils REPTE 6 --- */
+/* --- Teclado --- */
 .teclat-container {
   margin-top: 30px;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  user-select: none; /* Evita que es pugui seleccionar el text */
+  user-select: none;
 }
 .fila-teclat {
   display: flex;
@@ -251,15 +272,16 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid #ccc;
+  border: 1px solid #5c6370;
   border-radius: 4px;
-  background: #fff;
+  background: #3a3f4b;
   font-weight: bold;
-  color: #333;
+  color: #abb2bf;
   transition: background-color 0.1s;
 }
 .tecla-premuda {
-  background-color: #00bcd4; /* Color d'il·luminació */
-  color: #fff;
+  background-color: #61afef; /* Azul (como en el código) */
+  color: #21252b;
+  border-color: #61afef;
 }
 </style>

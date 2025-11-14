@@ -1,45 +1,51 @@
 import { io } from 'socket.io-client';
-import { ref } from 'vue'; // Importem ref per fer la llista reactiva
+import { ref } from 'vue';
 
-// Creem una variable reactiva que App.vue podrà importar
-export const jugadorsConnectats = ref([]);
+// Hacemos que la lista de jugadores sea 'reactiva'.
+// App.vue la importará directamente.
+export const jugadoresEnLobby = ref([]);
 
-// Creem una única instància del socket
-// autoConnect: false -> No es connecta fins que nosaltres li diguem
+// Creamos el socket pero NO nos conectamos aún
+// (autoConnect: false)
 const socket = io('http://localhost:8080', { autoConnect: false });
 
-// Aquest objecte serà la nostra API per comunicar-nos
-const communicationManager = {
+// Creamos un objeto 'gestor' para no llamar a 'socket'
+// directamente desde la App.vue. Es más limpio.
+const gestorConexion = {
   
-  // Funció per connectar-se i registrar listeners
-  connect(playerName) {
-    socket.autoConnect = true; // Habilitem la connexió automàtica
-    socket.connect(); // Connectem manualment la primera vegada
+  // Esta es la función que llamará App.vue
+  conectar(nombreJugador) {
+    // Ahora sí, le damos permiso para conectar
+    socket.autoConnect = true; 
+    socket.connect();
     
-    // Quan ens connectem, enviem el nom
+    // ---- Listeners (Escuchar al servidor) ----
+
+    // 1. Cuando la conexión se establece
     socket.on('connect', () => {
-      console.log('Connectat al servidor amb ID:', socket.id);
-      socket.emit('setPlayerName', playerName);
+      console.log('Conectado al servidor. Enviando nombre...');
+      // Le mandamos nuestro nombre al servidor
+      socket.emit('setPlayerName', nombreJugador);
     });
 
-    // Quan rebem la llista de jugadors, l'actualitzem
-    socket.on('updatePlayerList', (llistaDeJugadors) => {
-      jugadorsConnectats.value = llistaDeJugadors;
+    // 2. Cuando el servidor nos manda una lista actualizada
+    socket.on('updatePlayerList', (nuevaLista) => {
+      // Vue se encargará de actualizar la vista
+      jugadoresEnLobby.value = nuevaLista;
     });
 
-    // Gestionem la desconnexió (opcional però recomanat)
+    // 3. Cuando nos desconectamos
     socket.on('disconnect', () => {
-      console.log('Desconnectat del servidor');
-      jugadorsConnectats.value = []; // Buidem la llista
+      console.log('Te has desconectado.');
+      jugadoresEnLobby.value = []; // Vaciamos la lista
     });
   },
 
-  disconnect() {
+  // Función para desconectar manualmente (si hace falta)
+  desconectar() {
     socket.disconnect();
   },
-
-  // --- Aquí aniran la resta de funcions per a 'emit' i 'on' ---
-  // ...
 };
 
-export default communicationManager;
+// Exportamos el gestor para que App.vue lo use
+export default gestorConexion;

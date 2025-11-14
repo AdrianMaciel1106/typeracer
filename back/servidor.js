@@ -6,37 +6,53 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "*", // Permet connexions des de qualsevol origen
+    origin: "*", // De momento, cualquiera se puede conectar
   }
 });
 
-const jugadors = {};
-console.log('Servidor Socket.IO escoltant al port 8080');
+// Guardamos los jugadores conectados
+// La 'key' será el ID del socket, y el 'value' será {id, name}
+const jugadores = {};
 
-// Funció per enviar la llista de jugadors actualitzada a TOTHOM
-function broadcastPlayerList() {
-  io.emit('updatePlayerList', Object.values(jugadors));
+console.log('Servidor escuchando en el puerto 8080. ¡Go!');
+
+// Función para mandar la lista nueva a TODOS
+function actualizarListaJugadores() {
+  // 'updatePlayerList' es el "canal" que escucha el frontend
+  io.emit('updatePlayerList', Object.values(jugadores));
 }
 
-// Lògica de connexió de Socket.IO
+// Lógica principal de conexión
 io.on('connection', (socket) => {
-  console.log(`Un usuari s'ha connectat: ${socket.id}`);
+  console.log(`Nuevo jugador conectado: ${socket.id}`);
   
-  // Quan un usuari es desconnecta
+  // Cuando un jugador cierra la pestaña
   socket.on('disconnect', () => {
-    console.log(`L'usuari ${socket.id} s'ha desconnectat`);
-    delete jugadors[socket.id];
-    broadcastPlayerList(); // Informem a la resta que algú ha marxat
+    console.log(`Jugador ${socket.id} se ha ido.`);
+    
+    // Lo borramos de la lista
+    delete jugadores[socket.id];
+    
+    // Avisamos al resto
+    actualizarListaJugadores();
   });
 
-  // Quan un usuari ens envia el seu nom
-  socket.on('setPlayerName', (name) => {
-    jugadors[socket.id] = { id: socket.id, name: name };
-    console.log(`L'usuari ${socket.id} ara es diu: ${name}`);
-    broadcastPlayerList(); // Enviem la llista actualitzada a tothom
+  // Cuando el jugador se registra con un nombre
+  socket.on('setPlayerName', (nombre) => {
+    
+    // Comprobación simple (opcional, pero humano)
+    if (!nombre || nombre.trim().length === 0) {
+      nombre = "Anónimo";
+    }
+
+    jugadores[socket.id] = { id: socket.id, name: nombre.trim() };
+    console.log(`El jugador ${socket.id} ahora se llama: ${nombre}`);
+    
+    // Mandamos la lista actualizada
+    actualizarListaJugadores();
   });
 
-  // Aquí aniran més esdeveniments (començar partida, progrés...)
+  // TODO: Aquí irá la lógica de la partida
 });
 
 server.listen(8080);
