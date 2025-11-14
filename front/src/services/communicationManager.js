@@ -5,9 +5,8 @@ import { ref } from 'vue';
 // App.vue la importará directamente.
 export const jugadoresEnLobby = ref([]);
 
-// Creamos el socket pero NO nos conectamos aún
-// (autoConnect: false)
-const socket = io('http://localhost:8080', { autoConnect: false });
+// Se conectará al mismo servidor que sirve la página web
+const socket = io({ autoConnect: false });
 
 // Creamos un objeto 'gestor' para no llamar a 'socket'
 // directamente desde la App.vue. Es más limpio.

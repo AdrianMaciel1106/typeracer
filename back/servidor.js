@@ -1,6 +1,8 @@
 import express from 'express';
 import http from 'http';
 import { Server } from 'socket.io';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 const app = express();
 const server = http.createServer(app);
@@ -21,6 +23,19 @@ function actualizarListaJugadores() {
   // 'updatePlayerList' es el "canal" que escucha el frontend
   io.emit('updatePlayerList', Object.values(jugadores));
 }
+
+// --- Servir el Frontend (la carpeta 'dist') ---
+// Le decimos a Node dónde encontrar los archivos de frontend
+const rutaDist = path.join(__dirname, '../frontend/dist');
+
+// Le decimos a Express que use esa carpeta como "pública"
+app.use(express.static(rutaDist));
+
+// Si alguien refresca la página, Vue Router (o nuestro v-if) necesita
+// que le sirvamos el index.html para que él gestione la ruta
+app.get('*', (req, res) => {
+  res.sendFile(path.join(rutaDist, 'index.html'));
+});
 
 // Lógica principal de conexión
 io.on('connection', (socket) => {
